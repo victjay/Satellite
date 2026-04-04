@@ -1,0 +1,215 @@
+"""
+orbit.py — TLE loading, CATNR verification, and position computation.
+Uses CelesTrak GP endpoint only: gp.php?CATNR={catnr}&FORMAT=3LE
+"""
+import json
+import re
+from datetime import datetime, timezone
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+import requests
+import streamlit as st
+from skyfield.api import EarthSatellite, load
+
+CELESTRAK_URL = "https://celestrak.org/NORAD/elements/gp.php?CATNR={catnr}&FORMAT=3LE"
+MOCK_TLE_PATH = Path("data/mock_tles.json")
+
+
+def normalize_name(s: str) -> str:
+    """Uppercase and remove spaces/hyphens for name comparison."""
+    return re.sub(r"[\s\-]", "", s).upper()
+
+
+def _parse_3le(text: str):
+    """Parse a 3LE text block; return (line0, line1, line2) or None."""
+    lines = [l.strip() for l in text.strip().splitlines() if l.strip()]
+    if len(lines) >= 3:
+        return lines[0], lines[1], lines[2]
+    return None
+
+
+def _load_mock_tles():
+    """
+    Load mock TLE data from data/mock_tles.json.
+    Raises RuntimeError if any FILL_MANUALLY placeholder remains.
+    """
+    data = json.loads(MOCK_TLE_PATH.read_text())
+    for sat in data["mock_satellites"]:
+        if "FILL_MANUALLY" in (sat["line0"], sat["line1"], sat["line2"]):
+            raise RuntimeError(
+                "Mock TLE not initialized — please fill data/mock_tles.json manually"
+            )
+    return data["mock_satellites"]
+
+
+def _fetch_tle(catnr: int) -> tuple | None:
+    """Fetch 3LE from CelesTrak for a single CATNR; return (line0, line1, line2) or None."""
+    url = CELESTRAK_URL.format(catnr=catnr)
+    try:
+        resp = requests.get(url, timeout=10)
+        if resp.status_code == 200 and resp.text.strip():
+            return _parse_3le(resp.text)
+    except Exception:
+        pass
+    return None
+
+
+@st.cache_data(ttl=7200)
+def load_tles(satellite_list) -> tuple:
+    """
+    Load TLEs for all satellites.
+
+    satellite_list: tuple of (name, catnr, orbit) tuples (hashable for cache).
+
+    Returns:
+        [0] satellites: dict[str, dict]  — verified satellites only, values: {sat, orbit}
+        [1] fetch_timestamp: str         — UTC ISO-8601
+        [2] latest_epoch_str: str        — UTC ISO-8601 or 'N/A'
+        [3] is_mock_data: bool
+        [4] catnr_warnings: list[dict]
+    """
+    ts = load.timescale()
+    fetch_ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    satellites = {}
+    catnr_warnings = []
+    is_mock_data = False
+
+    # Normalize input to list of (name, catnr, orbit) tuples
+    sat_entries = [(e[0], e[1], e[2]) for e in satellite_list]
+
+    # Try live Celestrak first
+    live_ok = False
+    try:
+        test_resp = requests.get(
+            CELESTRAK_URL.format(catnr=sat_entries[0][1]), timeout=8
+        )
+        live_ok = test_resp.status_code == 200 and test_resp.text.strip() != ""
+    except Exception:
+        live_ok = False
+
+    if live_ok:
+        for (json_name, catnr, orbit) in sat_entries:
+            parsed = _fetch_tle(catnr)
+            if parsed is None:
+                catnr_warnings.append(
+                    {
+                        "catnr": catnr,
+                        "json_name": json_name,
+                        "celestrak_line0": "N/A",
+                        "reason": "Empty or failed response",
+                    }
+                )
+                continue
+            line0, line1, line2 = parsed
+            # Step A: construct EarthSatellite
+            try:
+                earth_sat = EarthSatellite(line1, line2, line0, ts)
+            except Exception as e:
+                catnr_warnings.append(
+                    {
+                        "catnr": catnr,
+                        "json_name": json_name,
+                        "celestrak_line0": line0,
+                        "reason": f"EarthSatellite init failed: {e}",
+                    }
+                )
+                continue
+            # Step B: name verification
+            norm_line0 = normalize_name(line0)
+            norm_json = normalize_name(json_name)
+            if not (norm_json in norm_line0 or norm_line0 in norm_json):
+                catnr_warnings.append(
+                    {
+                        "catnr": catnr,
+                        "json_name": json_name,
+                        "celestrak_line0": line0,
+                        "reason": "Name mismatch after normalize_name()",
+                    }
+                )
+                continue
+            # Store with original json name for consistent display
+            satellites[json_name] = {"sat": earth_sat, "orbit": orbit}
+    else:
+        # Fallback to mock
+        is_mock_data = True
+        try:
+            mock_sats = _load_mock_tles()
+        except RuntimeError as e:
+            # Can't use mock either — return empty with warning
+            catnr_warnings.append(
+                {"catnr": "ALL", "json_name": "ALL", "celestrak_line0": "N/A", "reason": str(e)}
+            )
+            return satellites, fetch_ts, "N/A", is_mock_data, catnr_warnings
+
+        # Build lookup by catnr
+        mock_by_catnr = {m["catnr"]: m for m in mock_sats}
+        for (json_name, catnr, orbit) in sat_entries:
+            mock = mock_by_catnr.get(catnr)
+            if mock is None:
+                continue
+            line0, line1, line2 = mock["line0"], mock["line1"], mock["line2"]
+            try:
+                earth_sat = EarthSatellite(line1, line2, line0, ts)
+            except Exception as e:
+                catnr_warnings.append(
+                    {
+                        "catnr": catnr,
+                        "json_name": json_name,
+                        "celestrak_line0": line0,
+                        "reason": f"EarthSatellite init failed: {e}",
+                    }
+                )
+                continue
+            satellites[json_name] = {"sat": earth_sat, "orbit": orbit}
+
+    # Compute latest_epoch_str
+    latest_epoch_str = "N/A"
+    try:
+        epochs = []
+        for v in satellites.values():
+            ep = v["sat"].epoch.utc_datetime()
+            epochs.append(ep)
+        if epochs:
+            latest_dt = max(epochs)
+            latest_epoch_str = latest_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+    except Exception:
+        latest_epoch_str = "N/A"
+
+    return satellites, fetch_ts, latest_epoch_str, is_mock_data, catnr_warnings
+
+
+def compute_positions(satellites: dict, ts) -> pd.DataFrame:
+    """
+    Compute current geocentric positions for all loaded satellites.
+
+    Columns: name, orbit, lat, lon, altitude_km, velocity_kms, catnr
+    lat clipped to [-90, 90]; lon clipped to [-180, 180].
+    """
+    rows = []
+    t_now = ts.now()
+    for name, v in satellites.items():
+        sat = v["sat"]
+        orbit = v["orbit"]
+        try:
+            geo = sat.at(t_now)
+            subpoint = geo.subpoint()
+            lat = float(np.clip(subpoint.latitude.degrees, -90, 90))
+            lon = float(np.clip(subpoint.longitude.degrees, -180, 180))
+            alt_km = float(subpoint.elevation.km)
+            vel_kms = float(geo.velocity.km_per_s.dot(geo.velocity.km_per_s) ** 0.5)
+        except Exception:
+            continue
+        rows.append(
+            {
+                "name": name,
+                "orbit": orbit,
+                "lat": lat,
+                "lon": lon,
+                "altitude_km": round(alt_km, 1),
+                "velocity_kms": round(vel_kms, 3),
+                "catnr": getattr(sat, "model", None) and sat.model.satnum or "N/A",
+            }
+        )
+    return pd.DataFrame(rows)
