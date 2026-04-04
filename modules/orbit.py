@@ -56,7 +56,7 @@ def _fetch_tle(catnr: int) -> tuple | None:
     return None
 
 
-@st.cache_data(ttl=7200)
+@st.cache_resource(ttl=7200)
 def load_tles(satellite_list) -> tuple:
     """
     Load TLEs for all satellites.
