@@ -1,0 +1,24 @@
+{
+  "_instruction": "Fill line0/line1/line2 manually from Celestrak before commit. Do NOT auto-generate TLE values.",
+  "_source": "https://celestrak.org/NORAD/elements/gp.php?CATNR={catnr}&FORMAT=3LE",
+  "_committed_at": "2026-04-05T00:20:00Z",
+  "_note": "SES-14 (GEO) + O3b mPOWER F1 (MEO). CATNR 54460 was CZ-6A DEB mismatch, replaced with 54755.",
+  "mock_satellites": [
+    {
+      "name": "SES-14 (Mock)",
+      "orbit": "GEO",
+      "catnr": 43175,
+      "line0": "SES-14",
+      "line1": "1 43175U 18012B   26094.22753240 -.00000279  00000+0  00000+0 0  9995",
+      "line2": "2 43175   0.0080 136.1382 0000864 247.4246 203.3942  1.00271289  6280"
+    },
+    {
+      "name": "O3b mPOWER F1 (Mock)",
+      "orbit": "MEO",
+      "catnr": 54755,
+      "line0": "O3B MPOWER F1",
+      "line1": "1 54755U 22174A   26094.20609994 -.00000026  00000+0  00000+0 0  9999",
+      "line2": "2 54755   0.0622 349.0208 0005613  42.2667   8.6694  5.00114902 61659"
+    }
+  ]
+}
