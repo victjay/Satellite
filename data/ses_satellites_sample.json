@@ -6,14 +6,14 @@
     {"name": "SES-12",       "catnr": 43488, "orbit": "GEO", "slot": "95.0°E"},
     {"name": "SES-14",       "catnr": 43175, "orbit": "GEO", "slot": "47.5°W"},
     {"name": "SES-15",       "catnr": 42709, "orbit": "GEO", "slot": "129.0°W"},
-    {"name": "SES-17",       "catnr": 49055, "orbit": "GEO", "slot": "67.1°W"},
-    {"name": "AMC-9",        "catnr": 27566, "orbit": "GEO", "slot": "83.0°W"},
-    {"name": "NSS-12",       "catnr": 32297, "orbit": "GEO", "slot": "57.0°E"},
-    {"name": "O3b mPOWER 1", "catnr": 54460, "orbit": "MEO", "slot": "MEO"},
-    {"name": "O3b mPOWER 2", "catnr": 54461, "orbit": "MEO", "slot": "MEO"},
-    {"name": "O3b mPOWER 3", "catnr": 54462, "orbit": "MEO", "slot": "MEO"},
-    {"name": "O3b mPOWER 4", "catnr": 54463, "orbit": "MEO", "slot": "MEO"},
-    {"name": "O3b mPOWER 5", "catnr": 54464, "orbit": "MEO", "slot": "MEO"},
-    {"name": "O3b mPOWER 6", "catnr": 54465, "orbit": "MEO", "slot": "MEO"}
+    {"name": "SES-17",         "catnr": 49332, "orbit": "GEO", "slot": "67.1°W"},
+    {"name": "AMC-9",          "catnr": 27820, "orbit": "GEO", "slot": "83.0°W"},
+    {"name": "NSS-12",         "catnr": 36032, "orbit": "GEO", "slot": "57.0°E"},
+    {"name": "O3b mPOWER F1",  "catnr": 54755, "orbit": "MEO", "slot": "MEO"},
+    {"name": "O3b mPOWER F2",  "catnr": 54756, "orbit": "MEO", "slot": "MEO"},
+    {"name": "O3b mPOWER F3",  "catnr": 56368, "orbit": "MEO", "slot": "MEO"},
+    {"name": "O3b mPOWER F4",  "catnr": 56367, "orbit": "MEO", "slot": "MEO"},
+    {"name": "O3b mPOWER F5",  "catnr": 58346, "orbit": "MEO", "slot": "MEO"},
+    {"name": "O3b mPOWER F6",  "catnr": 58347, "orbit": "MEO", "slot": "MEO"}
   ]
 }
