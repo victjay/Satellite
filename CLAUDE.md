@@ -26,4 +26,3 @@ If anything conflicts, the prompt spec wins.
 - Run 1: build scaffold + real-data panels + create mock template, then STOP for human action.
 - Human action: fill `data/mock_tles.json` (replace `FILL_MANUALLY`), commit.
 - Run 2: complete synthetic panels, integrate all tabs, final polish, checks, deployment readiness.
-
