@@ -53,19 +53,13 @@ def _fetch_tle(catnr: int) -> tuple | None:
     """
     url = CELESTRAK_URL.format(catnr=catnr)
     try:
-        resp = requests.get(url, timeout=10, headers=_HEADERS)
-        if resp.status_code != 200:
-            print(
-                f"[orbit] CATNR={catnr} HTTP {resp.status_code} "
-                f"body={resp.text[:200]!r}"
-            )
+        r = requests.get(url, timeout=10, headers=_HEADERS)
+        print(f"[CELESTRAK] CATNR={catnr} status={r.status_code} text={r.text[:100]}")
+        if r.status_code != 200 or not r.text.strip():
             return None
-        if not resp.text.strip():
-            print(f"[orbit] CATNR={catnr} HTTP 200 but empty body")
-            return None
-        return _parse_3le(resp.text)
-    except Exception as exc:
-        print(f"[orbit] CATNR={catnr} exception {type(exc).__name__}: {exc}")
+        return _parse_3le(r.text)
+    except Exception as e:
+        print(f"[CELESTRAK] CATNR={catnr} exception={type(e).__name__}: {e}")
         return None
 
 
@@ -83,6 +77,7 @@ def load_tles(satellite_list) -> tuple:
         [3] is_mock_data: bool
         [4] catnr_warnings: list[dict]
     """
+    print("[CELESTRAK] load_tles() called - fetching fresh TLEs")
     ts = load.timescale()
     fetch_ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     satellites = {}
