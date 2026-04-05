@@ -132,6 +132,7 @@ def load_tles(satellite_list) -> tuple:
         return cached
 
     print("[CELESTRAK] load_tles() called - fetching fresh TLEs", flush=True)
+    print(f"[SNAPSHOT] exists={SNAPSHOT_PATH.exists()}", flush=True)
     ts = load.timescale()
     sat_entries = [(e[0], e[1], e[2]) for e in satellite_list]
     satellites = {}
@@ -141,7 +142,7 @@ def load_tles(satellite_list) -> tuple:
 
     # ── 1순위: tle_snapshot.json ────────────────────────────────────────────
     if SNAPSHOT_PATH.exists():
-        print("[CELESTRAK] Using tle_snapshot.json", flush=True)
+        print("[SNAPSHOT] Loading from tle_snapshot.json", flush=True)
         try:
             snap = json.loads(SNAPSHOT_PATH.read_text())
             snap_by_catnr = {s["catnr"]: s for s in snap.get("satellites", [])}
@@ -168,8 +169,10 @@ def load_tles(satellite_list) -> tuple:
             fetch_ts = snap.get("_updated_at", fetch_ts)
             data_source = "snapshot"
         except Exception as e:
-            print(f"[CELESTRAK] snapshot read failed: {e}", flush=True)
+            print(f"[SNAPSHOT] read failed: {e}", flush=True)
             satellites = {}   # fall through to live
+    else:
+        print("[SNAPSHOT] Not found, trying Celestrak", flush=True)
 
     # ── 2순위: Celestrak 직접 호출 ─────────────────────────────────────────
     if not satellites:
