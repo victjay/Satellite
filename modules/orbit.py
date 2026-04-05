@@ -15,6 +15,7 @@ from skyfield.api import EarthSatellite, load
 
 CELESTRAK_URL = "https://celestrak.org/NORAD/elements/gp.php?CATNR={catnr}&FORMAT=3LE"
 MOCK_TLE_PATH = Path("data/mock_tles.json")
+_HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; ses-demo/1.0)"}
 
 
 def normalize_name(s: str) -> str:
@@ -45,15 +46,27 @@ def _load_mock_tles():
 
 
 def _fetch_tle(catnr: int) -> tuple | None:
-    """Fetch 3LE from CelesTrak for a single CATNR; return (line0, line1, line2) or None."""
+    """
+    Fetch 3LE from CelesTrak for a single CATNR.
+    Returns (line0, line1, line2) on success, None on any failure.
+    Prints diagnostic info on non-200 or exception for Cloud debugging.
+    """
     url = CELESTRAK_URL.format(catnr=catnr)
     try:
-        resp = requests.get(url, timeout=10)
-        if resp.status_code == 200 and resp.text.strip():
-            return _parse_3le(resp.text)
-    except Exception:
-        pass
-    return None
+        resp = requests.get(url, timeout=10, headers=_HEADERS)
+        if resp.status_code != 200:
+            print(
+                f"[orbit] CATNR={catnr} HTTP {resp.status_code} "
+                f"body={resp.text[:200]!r}"
+            )
+            return None
+        if not resp.text.strip():
+            print(f"[orbit] CATNR={catnr} HTTP 200 but empty body")
+            return None
+        return _parse_3le(resp.text)
+    except Exception as exc:
+        print(f"[orbit] CATNR={catnr} exception {type(exc).__name__}: {exc}")
+        return None
 
 
 @st.cache_resource(ttl=7200)
@@ -79,14 +92,22 @@ def load_tles(satellite_list) -> tuple:
     # Normalize input to list of (name, catnr, orbit) tuples
     sat_entries = [(e[0], e[1], e[2]) for e in satellite_list]
 
-    # Try live Celestrak first
+    # Try live Celestrak first (probe with first satellite)
     live_ok = False
     try:
-        test_resp = requests.get(
-            CELESTRAK_URL.format(catnr=sat_entries[0][1]), timeout=8
+        probe = requests.get(
+            CELESTRAK_URL.format(catnr=sat_entries[0][1]),
+            timeout=8,
+            headers=_HEADERS,
         )
-        live_ok = test_resp.status_code == 200 and test_resp.text.strip() != ""
-    except Exception:
+        live_ok = probe.status_code == 200 and probe.text.strip() != ""
+        if not live_ok:
+            print(
+                f"[orbit] Celestrak probe failed: HTTP {probe.status_code} "
+                f"body={probe.text[:200]!r}"
+            )
+    except Exception as exc:
+        print(f"[orbit] Celestrak probe exception {type(exc).__name__}: {exc}")
         live_ok = False
 
     if live_ok:
@@ -98,7 +119,7 @@ def load_tles(satellite_list) -> tuple:
                         "catnr": catnr,
                         "json_name": json_name,
                         "celestrak_line0": "N/A",
-                        "reason": "Empty or failed response",
+                        "reason": "HTTP error or empty response (see server log)",
                     }
                 )
                 continue
