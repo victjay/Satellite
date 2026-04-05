@@ -1,4 +1,132 @@
-"""
+"[00:28:59] 🔄 Updated app!
+
+2026-04-05 00:29:01.617 Please replace `use_container_width` with `width`.
+
+
+`use_container_width` will be removed after 2025-12-31.
+
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+
+2026-04-05 00:29:01.623 Please replace `use_container_width` with `width`.
+
+
+`use_container_width` will be removed after 2025-12-31.
+
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+
+2026-04-05 00:29:01.632 Please replace `use_container_width` with `width`.
+
+
+`use_container_width` will be removed after 2025-12-31.
+
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+
+2026-04-05 00:29:01.684 Please replace `use_container_width` with `width`.
+
+
+`use_container_width` will be removed after 2025-12-31.
+
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+
+2026-04-05 00:32:14.659 Please replace `use_container_width` with `width`.
+
+
+`use_container_width` will be removed after 2025-12-31.
+
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+
+2026-04-05 00:32:14.666 Please replace `use_container_width` with `width`.
+
+
+`use_container_width` will be removed after 2025-12-31.
+
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+
+2026-04-05 00:32:14.678 Please replace `use_container_width` with `width`.
+
+
+`use_container_width` will be removed after 2025-12-31.
+
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+
+2026-04-05 00:32:14.721 Please replace `use_container_width` with `width`.
+
+
+`use_container_width` will be removed after 2025-12-31.
+
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+
+2026-04-05 00:32:55.896 Please replace `use_container_width` with `width`.
+
+
+`use_container_width` will be removed after 2025-12-31.
+
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+
+2026-04-05 00:32:55.901 Please replace `use_container_width` with `width`.
+
+
+`use_container_width` will be removed after 2025-12-31.
+
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+
+2026-04-05 00:32:55.931 Please replace `use_container_width` with `width`.
+
+
+`use_container_width` will be removed after 2025-12-31.
+
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+
+2026-04-05 00:32:55.957 Please replace `use_container_width` with `width`.
+
+
+`use_container_width` will be removed after 2025-12-31.
+
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+
+2026-04-05 00:33:52.392 Please replace `use_container_width` with `width`.
+
+
+`use_container_width` will be removed after 2025-12-31.
+
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+
+2026-04-05 00:33:52.400 Please replace `use_container_width` with `width`.
+
+
+`use_container_width` will be removed after 2025-12-31.
+
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+
+2026-04-05 00:33:52.409 Please replace `use_container_width` with `width`.
+
+
+`use_container_width` will be removed after 2025-12-31.
+
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.
+
+2026-04-05 00:33:52.439 Please replace `use_container_width` with `width`.
+
+
+`use_container_width` will be removed after 2025-12-31.
+
+
+For `use_container_width=True`, use `width='stretch'`. For `use_container_width=False`, use `width='content'`.""
 orbit.py — TLE loading, CATNR verification, and position computation.
 Uses CelesTrak GP endpoint only: gp.php?CATNR={catnr}&FORMAT=3LE
 """
@@ -54,12 +182,14 @@ def _fetch_tle(catnr: int) -> tuple | None:
     url = CELESTRAK_URL.format(catnr=catnr)
     try:
         r = requests.get(url, timeout=10, headers=_HEADERS)
-        print(f"[CELESTRAK] CATNR={catnr} status={r.status_code} text={r.text[:100]}")
+        #print(f"[CELESTRAK] CATNR={catnr} status={r.status_code} text={r.text[:100]}")
+        print(f"[CELESTRAK] CATNR={catnr} status={r.status_code} text={r.text[:100]}", flush=True)
         if r.status_code != 200 or not r.text.strip():
             return None
         return _parse_3le(r.text)
     except Exception as e:
-        print(f"[CELESTRAK] CATNR={catnr} exception={type(e).__name__}: {e}")
+        #print(f"[CELESTRAK] CATNR={catnr} exception={type(e).__name__}: {e}")
+        print(f"[CELESTRAK] CATNR={catnr} exception={type(e).__name__}: {e}", flush=True)
         return None
 
 
@@ -83,7 +213,8 @@ def load_tles(satellite_list) -> tuple:
     if cached is not None and (now - fetched_at) < 7200:
         return cached
 
-    print("[CELESTRAK] load_tles() called - fetching fresh TLEs")
+    #print("[CELESTRAK] load_tles() called - fetching fresh TLEs")
+    print("[CELESTRAK] load_tles() called - fetching fresh TLEs", flush=True)
     ts = load.timescale()
     fetch_ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     satellites = {}
@@ -103,12 +234,17 @@ def load_tles(satellite_list) -> tuple:
         )
         live_ok = probe.status_code == 200 and probe.text.strip() != ""
         if not live_ok:
+            #print(
+            #    f"[orbit] Celestrak probe failed: HTTP {probe.status_code} "
+            #    f"body={probe.text[:200]!r}"
+            #)
             print(
                 f"[orbit] Celestrak probe failed: HTTP {probe.status_code} "
-                f"body={probe.text[:200]!r}"
+                f"body={probe.text[:200]!r}", flush=True
             )
     except Exception as exc:
-        print(f"[orbit] Celestrak probe exception {type(exc).__name__}: {exc}")
+        #print(f"[orbit] Celestrak probe exception {type(exc).__name__}: {exc}")
+        print(f"[orbit] Celestrak probe exception {type(exc).__name__}: {exc}", flush=True)
         live_ok = False
 
     if live_ok:
