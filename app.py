@@ -29,21 +29,19 @@ satellite_list = sat_data["satellites"]
 # --- Load TLEs ---
 # Pass as a hashable tuple of frozen dicts (st.cache_data requires hashable args)
 _sat_key = tuple((s["name"], s["catnr"], s["orbit"]) for s in satellite_list)
-satellites, fetch_ts, epoch_str, is_mock, catnr_warns = load_tles(_sat_key)
+satellites, fetch_ts, epoch_str, data_source, catnr_warns = load_tles(_sat_key)
 
 # --- Status banner ---
-if is_mock:
-    st.warning(
-        "⚠️ Mock mode: static snapshot TLE (for UI workflow only) — Celestrak unavailable"
-    )
-else:
-    st.info(
-        f"TLE fetched: {fetch_ts} UTC | Latest TLE epoch: {epoch_str} UTC"
-    )
+if data_source == "snapshot":
+    st.info(f"TLE snapshot: {fetch_ts} (auto-updated daily) | Latest TLE epoch: {epoch_str} UTC")
+elif data_source == "live":
+    st.info(f"TLE fetched: {fetch_ts} UTC (2h cache) | Latest TLE epoch: {epoch_str} UTC")
+else:  # mock
+    st.warning("⚠️ Mock mode: static snapshot TLE (for UI workflow only) — Celestrak unavailable")
 
-# --- CATNR warnings ---
+# --- CATNR / snapshot warnings ---
 if catnr_warns:
-    with st.expander("⚠️ CATNR Verification Warnings (click to expand)"):
+    with st.expander("⚠️ TLE Snapshot Warnings (click to expand)"):
         st.dataframe(pd.DataFrame(catnr_warns))
 
 # --- Refresh button with 30s cooldown ---

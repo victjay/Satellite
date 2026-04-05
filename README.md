@@ -62,6 +62,20 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
+## TLE Data Pipeline
+
+Satellite TLE data is updated daily via GitHub Actions (UTC 02:00).
+The workflow fetches fresh TLE from Celestrak GP and commits
+data/tle_snapshot.json. Streamlit Cloud reads this file directly,
+avoiding outbound connection restrictions.
+
+To force an update: Actions → update_tle_snapshot → Run workflow
+Note: Do not run more frequently than every 2 hours (Celestrak policy).
+
+Current satellite list uses 5-digit NORAD IDs.
+If Celestrak transitions to 6-digit IDs or OMM format,
+the snapshot schema will require review.
+
 ## Quality Check
 
 ```

@@ -1,0 +1,129 @@
+name: Update TLE Snapshot
+
+on:
+  schedule:
+    - cron: '0 2 * * *'   # daily UTC 02:00
+  workflow_dispatch:        # manual trigger
+
+permissions:
+  contents: write
+
+jobs:
+  update-tle:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Fetch TLEs and update snapshot
+        run: |
+          python - << 'PYEOF'
+          import json, time, requests
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          CELESTRAK_URL = "https://celestrak.org/NORAD/elements/gp.php?CATNR={catnr}&FORMAT=3LE"
+          HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; ses-demo/1.0)"}
+          SNAPSHOT_PATH = Path("data/tle_snapshot.json")
+
+          satellites_meta = [
+              {"name": "SES-12",        "catnr": 43488, "orbit": "GEO"},
+              {"name": "SES-14",        "catnr": 43175, "orbit": "GEO"},
+              {"name": "SES-15",        "catnr": 42709, "orbit": "GEO"},
+              {"name": "SES-17",        "catnr": 49332, "orbit": "GEO"},
+              {"name": "AMC-9",         "catnr": 27820, "orbit": "GEO"},
+              {"name": "NSS-12",        "catnr": 36032, "orbit": "GEO"},
+              {"name": "O3b mPOWER F1", "catnr": 54755, "orbit": "MEO"},
+              {"name": "O3b mPOWER F2", "catnr": 54756, "orbit": "MEO"},
+              {"name": "O3b mPOWER F3", "catnr": 56368, "orbit": "MEO"},
+              {"name": "O3b mPOWER F4", "catnr": 56367, "orbit": "MEO"},
+              {"name": "O3b mPOWER F5", "catnr": 58346, "orbit": "MEO"},
+              {"name": "O3b mPOWER F6", "catnr": 58347, "orbit": "MEO"},
+          ]
+
+          # Load existing snapshot for merge fallback
+          existing_by_catnr = {}
+          if SNAPSHOT_PATH.exists():
+              try:
+                  prev = json.loads(SNAPSHOT_PATH.read_text())
+                  for s in prev.get("satellites", []):
+                      existing_by_catnr[s["catnr"]] = s
+              except Exception:
+                  pass
+
+          success = []
+          warnings = []
+          new_fetches = 0
+
+          for meta in satellites_meta:
+              catnr = meta["catnr"]
+              url = CELESTRAK_URL.format(catnr=catnr)
+              try:
+                  r = requests.get(url, timeout=10, headers=HEADERS)
+                  if r.status_code != 200 or not r.text.strip():
+                      warnings.append({"catnr": catnr, "error_type": "HTTPError",
+                                       "message": f"status={r.status_code}"})
+                      print(f"  SKIP {meta['name']} status={r.status_code}")
+                      if catnr in existing_by_catnr:
+                          success.append(existing_by_catnr[catnr])
+                      time.sleep(0.5)
+                      continue
+                  lines = [l.strip() for l in r.text.strip().splitlines() if l.strip()]
+                  if len(lines) < 3:
+                      warnings.append({"catnr": catnr, "error_type": "ParseError",
+                                       "message": "fewer than 3 lines"})
+                      if catnr in existing_by_catnr:
+                          success.append(existing_by_catnr[catnr])
+                      time.sleep(0.5)
+                      continue
+                  success.append({
+                      "name":  meta["name"],
+                      "catnr": catnr,
+                      "orbit": meta["orbit"],
+                      "line0": lines[0],
+                      "line1": lines[1],
+                      "line2": lines[2],
+                  })
+                  new_fetches += 1
+                  print(f"  OK   {meta['name']} CATNR={catnr}")
+              except Exception as e:
+                  warnings.append({"catnr": catnr, "error_type": type(e).__name__,
+                                   "message": str(e)})
+                  print(f"  FAIL {meta['name']} {type(e).__name__}: {e}")
+                  if catnr in existing_by_catnr:
+                      success.append(existing_by_catnr[catnr])
+              time.sleep(0.5)
+
+          # Do not overwrite if zero new fetches succeeded
+          if new_fetches == 0:
+              print("No new fetches succeeded — skipping file update.")
+              raise SystemExit(0)
+
+          snapshot = {
+              "_updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+              "_source": "Celestrak GP / GitHub Actions auto-update",
+              "_update_interval": "daily at UTC 02:00",
+              "_warnings": warnings,
+              "satellites": success,
+          }
+          SNAPSHOT_PATH.write_text(json.dumps(snapshot, indent=2))
+          print(f"Snapshot written: {len(success)} satellites, {len(warnings)} warnings")
+          PYEOF
+
+      - name: Commit updated snapshot
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/tle_snapshot.json
+          git diff --cached --quiet && echo "No changes to commit." || \
+            git commit -m "chore(tle): auto-update tle_snapshot.json [skip ci]"
+          git push
