@@ -52,7 +52,7 @@ cooldown = 30
 elapsed = time.time() - last_refresh
 if elapsed > cooldown:
     if st.button("🔄 Refresh TLE Data"):
-        load_tles.clear()
+        st.session_state["tle_fetched_at"] = 0
         st.session_state["last_refresh_ts"] = time.time()
         st.rerun()
 else:

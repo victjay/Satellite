@@ -63,12 +63,11 @@ def _fetch_tle(catnr: int) -> tuple | None:
         return None
 
 
-@st.cache_resource(ttl=7200)
 def load_tles(satellite_list) -> tuple:
     """
-    Load TLEs for all satellites.
+    Load TLEs for all satellites. TTL cache via st.session_state (7200s).
 
-    satellite_list: tuple of (name, catnr, orbit) tuples (hashable for cache).
+    satellite_list: tuple of (name, catnr, orbit) tuples.
 
     Returns:
         [0] satellites: dict[str, dict]  — verified satellites only, values: {sat, orbit}
@@ -77,6 +76,13 @@ def load_tles(satellite_list) -> tuple:
         [3] is_mock_data: bool
         [4] catnr_warnings: list[dict]
     """
+    import time as _time
+    now = _time.time()
+    fetched_at = st.session_state.get("tle_fetched_at", 0)
+    cached = st.session_state.get("tle_cache")
+    if cached is not None and (now - fetched_at) < 7200:
+        return cached
+
     print("[CELESTRAK] load_tles() called - fetching fresh TLEs")
     ts = load.timescale()
     fetch_ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -193,7 +199,10 @@ def load_tles(satellite_list) -> tuple:
     except Exception:
         latest_epoch_str = "N/A"
 
-    return satellites, fetch_ts, latest_epoch_str, is_mock_data, catnr_warnings
+    result = (satellites, fetch_ts, latest_epoch_str, is_mock_data, catnr_warnings)
+    st.session_state["tle_cache"] = result
+    st.session_state["tle_fetched_at"] = now
+    return result
 
 
 def compute_positions(satellites: dict, ts) -> pd.DataFrame:
