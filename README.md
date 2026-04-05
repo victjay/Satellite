@@ -6,7 +6,9 @@ Built by YoungDae Je as a portfolio project while applying for
 Engineer, Spacecraft Subsystem, Payload at SES (Req. 19358).
 
 ## Live Demo
-https://satellite-ses-demo.streamlit.app/
+https://satellite-ses-demo.streamlit.app
+
+GitHub: https://github.com/victjay/Satellite
 
 ## What's Real vs Simulated
 
